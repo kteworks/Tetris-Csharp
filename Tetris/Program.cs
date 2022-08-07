@@ -128,7 +128,7 @@ namespace Tetris
             // 描画のちらつき防止
             DoubleBuffered = true;
 
-            var bm = new Bitmap("tile.png");
+            var bm = new Bitmap(Properties.Resources.tile);
 
             int len = bm.Width / TILE_SIZE;
             mTile = new Bitmap[len];
