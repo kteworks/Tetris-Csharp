@@ -19,6 +19,7 @@ namespace Tetris
         static readonly int WND_WIDTH = SCR_WIDTH * 2;
         static readonly int WND_HEIGHT = SCR_HEIGHT * 2;
         static readonly int WAIT = 60;
+        static readonly int INIT_FALL_SPEED = 0;
 
         static readonly byte[,,] mBlock =
         {
@@ -98,6 +99,8 @@ namespace Tetris
         Bitmap mScreen = new Bitmap(SCR_WIDTH, SCR_HEIGHT);
         Bitmap[] mTile;
 
+        int FALL_SPEED;
+        int SCORE;
         int mX, mY, mA, mWait;
         byte mT, mNext;
         int mKeyL, mKeyR, mKeyX, mKeyZ;
@@ -111,15 +114,15 @@ namespace Tetris
             if (e.KeyCode == Keys.Left) mKeyL++;
             if (e.KeyCode == Keys.Right) mKeyR++;
             if (e.KeyCode == Keys.X) mKeyX++;
-            if (e.KeyCode == Keys.Z) mKeyZ++;
+            if (e.KeyCode == Keys.Z) mKeyZ--;
         }
 
         protected override void OnKeyUp(KeyEventArgs e)
         {
             if(e.KeyCode == Keys.Left) mKeyL = 0;
             if (e.KeyCode == Keys.Right) mKeyR = 0;
-            if (e.KeyCode == Keys.X) mKeyX = 0;
-            if (e.KeyCode == Keys.Z) mKeyZ = 0;
+            if (e.KeyCode == Keys.X) mKeyX++;
+            if (e.KeyCode == Keys.Z) mKeyZ++;
         }
 
         protected override void OnLoad( EventArgs e )
@@ -129,6 +132,8 @@ namespace Tetris
             DoubleBuffered = true;
             Icon = Properties.Resources.icon0;
             Text = Application.ProductName;
+
+            FALL_SPEED = INIT_FALL_SPEED;
 
             var bm = new Bitmap(Properties.Resources.tile);
 
@@ -294,20 +299,26 @@ namespace Tetris
             }
 
             // ブロックが落下可能だったら落下
-            if (put(mX, mY + 1, mT, mA, true, true)){
-                mY++;
-                mWait = WAIT;
+            if (put(mX, mY + 1, mT, mA, true, true))
+            {
+                Console.WriteLine(mWait % WAIT);
+                {
+                    mY++;
+                    mWait = WAIT;
+                }
             } else
             {
                 mWait--;
+                Console.WriteLine(mWait % WAIT);
             }
 
             put(mX, mY, mT, mA, true, false);
         }
         void wait()
         {
-            if( mWait == 29 )
+            if( mWait == WAIT / 2 - 1 )
             {
+                int s = 0;
                 for(int y = 22; y > 2; y--)
                 {
                     int n = 0;
@@ -325,8 +336,10 @@ namespace Tetris
                     for(int x = 2; x < 12; x++)
                     {
                         mField[y, x] = 10;
+                        s++;
                     }
                 }
+                SCORE += s * s;
             }
 
             if( mWait == 1)
