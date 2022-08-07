@@ -127,6 +127,8 @@ namespace Tetris
             ClientSize = new Size(WND_WIDTH, WND_HEIGHT);
             // 描画のちらつき防止
             DoubleBuffered = true;
+            Icon = Properties.Resources.icon0;
+            Text = Application.ProductName;
 
             var bm = new Bitmap(Properties.Resources.tile);
 
