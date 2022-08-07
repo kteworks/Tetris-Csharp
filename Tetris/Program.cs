@@ -10,6 +10,11 @@ namespace Tetris
 {
     internal class Program : Form
     {
+        private System.ComponentModel.IContainer components = null;
+
+        public Timer timer1 { get; private set; }
+        public Timer timer2 { get; private set; }
+
         static readonly int TILE_SIZE = 12;
         static readonly int TIMER_INTERVAL = 16;
         static readonly int MAP_WIDTH = 14;
@@ -106,7 +111,7 @@ namespace Tetris
         int mKeyL, mKeyR, mKeyX, mKeyZ;
         Random mRnd = new Random();
         bool mGameOver;
-        int mTimer;
+        // int mTimer;
 
 
         protected override void OnKeyDown(KeyEventArgs e)
@@ -121,19 +126,28 @@ namespace Tetris
         {
             if(e.KeyCode == Keys.Left) mKeyL = 0;
             if (e.KeyCode == Keys.Right) mKeyR = 0;
-            if (e.KeyCode == Keys.X) mKeyX++;
-            if (e.KeyCode == Keys.Z) mKeyZ++;
+            if (e.KeyCode == Keys.X) mKeyX = 0;
+            if (e.KeyCode == Keys.Z) mKeyZ = 0;
         }
 
         protected override void OnLoad( EventArgs e )
         {
+            FALL_SPEED = INIT_FALL_SPEED;
+
             ClientSize = new Size(WND_WIDTH, WND_HEIGHT);
             // 描画のちらつき防止
             DoubleBuffered = true;
             Icon = Properties.Resources.icon0;
             Text = Application.ProductName;
+            this.components = new System.ComponentModel.Container();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
+            this.timer2 = new System.Windows.Forms.Timer(this.components);
+            this.timer1.Interval = 16;
+            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+            this.timer2.Interval = 16 * (60 - FALL_SPEED);
+            this.timer2.Tick += new System.EventHandler(this.timer2_Tick);
 
-            FALL_SPEED = INIT_FALL_SPEED;
+            
 
             var bm = new Bitmap(Properties.Resources.tile);
 
@@ -147,7 +161,9 @@ namespace Tetris
             mNext = (byte)mRnd.Next(7);
             next();
 
-            Task.Run(() =>
+            timer1.Start();
+
+            /* Task.Run(() =>
             {
                 mTimer = System.Environment.TickCount;
                 while (true)
@@ -156,7 +172,17 @@ namespace Tetris
                     mTimer += TIMER_INTERVAL;
                     Task.Delay(Math.Max(1, mTimer - System.Environment.TickCount)).Wait();
                 }
-            });
+            }); */
+        }
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            onTimer();
+        }
+
+        private void timer2_Tick(object sender, EventArgs e)
+        {
+            onTimer();
         }
 
 
@@ -230,6 +256,26 @@ namespace Tetris
             Invalidate();
         }
 
+        void onTimer2()
+        {
+            if (mWait < WAIT / 2)
+            {
+                wait();
+                return;
+            }
+
+            // ブロックが落下可能だったら落下
+            if (put(mX, mY + 1, mT, mA, true, true))
+            {
+                mY++;
+                mWait = WAIT;
+            }
+            else
+            {
+                mWait--;
+            }
+        }
+
 
         // ブロック描画 座標：x y ブロック種類：t 回転：a
         bool put(int x, int y, byte t, int a, bool s, bool test)
@@ -272,11 +318,11 @@ namespace Tetris
                 return;
             }
 
-            if (mWait < WAIT / 2)
+            /* if (mWait < WAIT / 2)
             {
                 wait();
                 return;
-            }
+            } */
 
             put(mX, mY, mT, mA, false, false);
 
@@ -299,18 +345,14 @@ namespace Tetris
             }
 
             // ブロックが落下可能だったら落下
-            if (put(mX, mY + 1, mT, mA, true, true))
+            /* if (put(mX, mY + 1, mT, mA, true, true))
             {
-                Console.WriteLine(mWait % WAIT);
-                {
-                    mY++;
-                    mWait = WAIT;
-                }
+                mY++;
+                mWait = WAIT;
             } else
             {
                 mWait--;
-                Console.WriteLine(mWait % WAIT);
-            }
+            } */
 
             put(mX, mY, mT, mA, true, false);
         }
