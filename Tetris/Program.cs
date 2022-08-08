@@ -15,6 +15,7 @@ namespace Tetris
         public Timer timer1 { get; private set; }
         public Timer timer2 { get; private set; }
 
+        static readonly int INIT_FALL_SPEED = 0;
         static readonly int TILE_SIZE = 12;
         static readonly int TIMER_INTERVAL = 16;
         static readonly int MAP_WIDTH = 14;
@@ -24,7 +25,6 @@ namespace Tetris
         static readonly int WND_WIDTH = SCR_WIDTH * 2;
         static readonly int WND_HEIGHT = SCR_HEIGHT * 2;
         static readonly int WAIT = 60;
-        static readonly int INIT_FALL_SPEED = 0;
 
         static readonly byte[,,] mBlock =
         {
@@ -72,7 +72,23 @@ namespace Tetris
             },
         };
 
-        byte[,] mField =
+        byte[,] mField;
+
+        Bitmap mScreen = new Bitmap(SCR_WIDTH, SCR_HEIGHT);
+        Bitmap[] mTile;
+
+        int FALL_SPEED;
+        int SCORE;
+        int mX, mY, mA, mWait;
+        byte mT, mNext;
+        int mKeyL, mKeyR, mKeyX, mKeyZ;
+        Random mRnd = new Random();
+        bool mGameOver;
+        // int mTimer;
+
+        void MainFieldInitialize()
+        {
+            byte[,] mField =
         {
             { 9, 9, 9, 9, 9, 7, 7, 7, 7, 9, 9, 9, 9, 9 },
             { 9, 9, 9, 9, 9, 7, 7, 7, 7, 9, 9, 9, 9, 9 },
@@ -101,27 +117,18 @@ namespace Tetris
             { 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9 },
             { 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9 },
         };
-
-        Bitmap mScreen = new Bitmap(SCR_WIDTH, SCR_HEIGHT);
-        Bitmap[] mTile;
-
-        int FALL_SPEED;
-        int SCORE;
-        int mX, mY, mA, mWait;
-        byte mT, mNext;
-        int mKeyL, mKeyR, mKeyX, mKeyZ;
-        Random mRnd = new Random();
-        bool mGameOver;
-        // int mTimer;
-
+            this.mField = mField;
+        }
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Left) mKeyL++;
             if (e.KeyCode == Keys.Right) mKeyR++;
-            if (e.KeyCode == Keys.Down) onTimer2();
+            if (e.KeyCode == Keys.Down) fall();
+            if (e.KeyCode == Keys.Up) fall2();
             if (e.KeyCode == Keys.X) mKeyX++;
             if (e.KeyCode == Keys.Z) mKeyZ++;
+            if (e.KeyCode == Keys.R) { timer1.Stop(); InitializeForm(); }
         }
 
         protected override void OnKeyUp(KeyEventArgs e)
@@ -134,7 +141,14 @@ namespace Tetris
 
         protected override void OnLoad( EventArgs e )
         {
+            InitializeForm();
+        }
+
+        void InitializeForm()
+        {
             FALL_SPEED = INIT_FALL_SPEED;
+            SCORE = 0;
+            MainFieldInitialize();
 
             ClientSize = new Size(WND_WIDTH, WND_HEIGHT);
             // 描画のちらつき防止
@@ -149,7 +163,7 @@ namespace Tetris
             this.timer2.Interval = 16 * (60 - FALL_SPEED);
             this.timer2.Tick += new System.EventHandler(this.timer2_Tick);
 
-            
+            mGameOver = false;
 
             var bm = new Bitmap(Properties.Resources.tile);
 
@@ -185,26 +199,19 @@ namespace Tetris
 
         private void timer2_Tick(object sender, EventArgs e)
         {
-            onTimer2();
+            fall();
         }
 
 
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = Graphics.FromImage(mScreen);
+            TilePaint(g);
 
-            for (int y = 0; y < mField.GetLength(0); y++)
-            {
-                for (int x = 0; x < MAP_WIDTH; x++)
-                {
-                    g.DrawImage(mTile[mField[y, x]], x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                }
-            }
-            g.DrawString("SCORE:"+SCORE, new Font("Meiryo", 7), Brushes.Black, 0, 0);
             g.DrawString("SPIN:Z / X   MOVE:RIGHT / LEFT", new Font("Meiryo", 7), Brushes.Black, 0, 286);
+
             if (mGameOver)
             {
-                g.DrawString("GAME OVER", new Font("Meiryo", 16), Brushes.White, 16, 64);
                 for (int y = 22; y > 2; y--)
                 {
                     for (int x = 2; x < 12; x++)
@@ -213,11 +220,29 @@ namespace Tetris
                             mField[y, x] = 10;
                     }
                 }
+                TilePaint(g);
+                g.DrawString("RESTART:R", new Font("Meiryo", 7), Brushes.Black, 0, 286);
+                g.DrawString("GAME OVER", new Font("Meiryo", 16), Brushes.White, 16, 64);
+                
+                timer2.Stop();
             }
+
+            g.DrawString("SCORE:" + SCORE, new Font("Meiryo", 7), Brushes.Black, 0, 0);
 
             float a = Math.Min((float)ClientSize.Width / SCR_WIDTH,
                 (float)ClientSize.Height / SCR_HEIGHT);
             e.Graphics.DrawImage(mScreen, 0, 0, SCR_WIDTH * a, SCR_HEIGHT * a);
+        }
+
+        void TilePaint(Graphics g)
+        {
+            for (int y = 0; y < mField.GetLength(0); y++)
+            {
+                for (int x = 0; x < MAP_WIDTH; x++)
+                {
+                    g.DrawImage(mTile[mField[y, x]], x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
+            }
         }
 
         static void Main(string[] args)
@@ -259,13 +284,6 @@ namespace Tetris
 
             Invalidate();
         }
-
-        void onTimer2()
-        {
-            tick2();
-            Invalidate();
-        }
-
 
         // ブロック描画 座標：x y ブロック種類：t 回転：a
         bool put(int x, int y, byte t, int a, bool s, bool test)
@@ -346,7 +364,7 @@ namespace Tetris
             put(mX, mY, mT, mA, true, false);
         }
 
-        void tick2()
+        void fall()
         {
             if (mGameOver)
             {
@@ -373,6 +391,38 @@ namespace Tetris
             }
 
             put(mX, mY, mT, mA, true, false);
+            Invalidate();
+        }
+
+        void fall2()
+        {
+            if (mGameOver)
+            {
+                return;
+            }
+
+            if (mWait < WAIT / 2)
+            {
+                wait();
+                return;
+            }
+
+            put(mX, mY, mT, mA, false, false);
+
+            // ブロックが落下可能だったら落下
+            while (put(mX, mY + 1, mT, mA, true, true))
+            {
+                mY++;
+                mWait = WAIT;
+            }
+            
+            if(!put(mX, mY + 1, mT, mA, true, true))
+            {
+                mWait--;
+            }
+
+            put(mX, mY, mT, mA, true, false);
+            Invalidate();
         }
 
 
