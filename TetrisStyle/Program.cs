@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace Tetris
+namespace TetrisStyle
 {
     internal class Program : Form
     {
